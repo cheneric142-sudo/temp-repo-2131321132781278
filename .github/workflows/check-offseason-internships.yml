@@ -1,0 +1,52 @@
+name: Check Off-Season Internship Listings
+
+on:
+  schedule:
+    # Passive backup only. The primary, reliable trigger is an external
+    # cron-job.org ping calling workflow_dispatch via the GitHub API - see
+    # README for setup. This native schedule is left in as free insurance;
+    # it's harmless if it also fires occasionally since `concurrency` below
+    # prevents overlapping runs and the script is idempotent.
+    - cron: "*/15 * * * *"
+  workflow_dispatch: {}   # triggered externally by cron-job.org, or manually from the Actions tab
+
+permissions:
+  contents: write   # needed so the workflow can commit state-offseason.json back
+
+concurrency:
+  group: offseason-internship-watcher   # separate group from the main watcher, so the two run independently
+  cancel-in-progress: false
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out repo
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Install dependencies
+        run: pip install -r requirements.txt
+
+      - name: Run watcher
+        env:
+          DISCORD_WEBHOOK_URL_OFFSEASON: ${{ secrets.DISCORD_WEBHOOK_URL_OFFSEASON }}
+          SMTP_HOST: ${{ secrets.SMTP_HOST }}
+          SMTP_PORT: ${{ secrets.SMTP_PORT }}
+          SMTP_USER: ${{ secrets.SMTP_USER }}
+          SMTP_PASS: ${{ secrets.SMTP_PASS }}
+          EMAIL_FROM: ${{ secrets.EMAIL_FROM }}
+          EMAIL_TO: ${{ secrets.EMAIL_TO }}
+        run: python check_offseason_internships.py
+
+      - name: Commit updated state
+        run: |
+          git config user.name "internship-watcher-bot"
+          git config user.email "actions@users.noreply.github.com"
+          git add state-offseason.json
+          git diff --cached --quiet || git commit -m "Update off-season internship state [skip ci]"
+          git push

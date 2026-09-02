@@ -14,8 +14,9 @@ permissions:
   contents: write   # needed so the workflow can commit state-offseason.json back
 
 concurrency:
-  group: offseason-internship-watcher   # separate group from the main watcher, so the two run independently
+  group: internship-state-writer-${{ github.ref }}
   cancel-in-progress: false
+  queue: max
 
 jobs:
   check:

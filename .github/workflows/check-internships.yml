@@ -11,8 +11,9 @@ permissions:
   contents: write   # needed so the workflow can commit state.json back
 
 concurrency:
-  group: internship-watcher
+  group: internship-state-writer-${{ github.ref }}
   cancel-in-progress: false
+  queue: max
 
 jobs:
   check:
